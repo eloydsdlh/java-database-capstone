@@ -1,72 +1,116 @@
 /*
-  This script handles the admin dashboard functionality for managing doctors:
-  - Loads all doctor cards
-  - Filters doctors by name, time, or specialty
-  - Adds a new doctor via modal form
+  Admin Dashboard Script for Managing Doctors
 
-
-  Attach a click listener to the "Add Doctor" button
-  When clicked, it opens a modal form using openModal('addDoctor')
-
-
-  When the DOM is fully loaded:
-    - Call loadDoctorCards() to fetch and display all doctors
-
-
-  Function: loadDoctorCards
-  Purpose: Fetch all doctors and display them as cards
-
-    Call getDoctors() from the service layer
-    Clear the current content area
-    For each doctor returned:
-    - Create a doctor card using createDoctorCard()
-    - Append it to the content div
-
-    Handle any fetch errors by logging them
-
-
-  Attach 'input' and 'change' event listeners to the search bar and filter dropdowns
-  On any input change, call filterDoctorsOnChange()
-
-
-  Function: filterDoctorsOnChange
-  Purpose: Filter doctors based on name, available time, and specialty
-
-    Read values from the search bar and filters
-    Normalize empty values to null
-    Call filterDoctors(name, time, specialty) from the service
-
-    If doctors are found:
-    - Render them using createDoctorCard()
-    If no doctors match the filter:
-    - Show a message: "No doctors found with the given filters."
-
-    Catch and display any errors with an alert
-
-
-  Function: renderDoctorCards
-  Purpose: A helper function to render a list of doctors passed to it
-
-    Clear the content area
-    Loop through the doctors and append each card to the content area
-
-
-  Function: adminAddDoctor
-  Purpose: Collect form data and add a new doctor to the system
-
-    Collect input values from the modal form
-    - Includes name, email, phone, password, specialty, and available times
-
-    Retrieve the authentication token from localStorage
-    - If no token is found, show an alert and stop execution
-
-    Build a doctor object with the form values
-
-    Call saveDoctor(doctor, token) from the service
-
-    If save is successful:
-    - Show a success message
-    - Close the modal and reload the page
-
-    If saving fails, show an error message
+  Responsibilities:
+  - Load and display doctor cards
+  - Filter doctors based on user input
+  - Add new doctors using a modal form
 */
+
+// === IMPORTS ===
+import { getDoctors, saveDoctor, filterDoctors } from "./services/doctorServices.js";
+import { createDoctorCard } from "./components/doctorCard.js";
+import { openModal, closeModal } from "./components/modals.js";
+
+// === SELECT ELEMENTS ===
+const contentDiv = document.getElementById("content");
+const addDoctorBtn = document.getElementById("addDoctorBtn");
+const searchInput = document.getElementById("searchInput");
+const timeFilter = document.getElementById("timeFilter");
+const specialtyFilter = document.getElementById("specialtyFilter");
+
+// === ATTACH EVENT TO "ADD DOCTOR" BUTTON ===
+addDoctorBtn?.addEventListener("click", () => {
+  openModal("addDoctor");
+});
+
+// === ON PAGE LOAD, FETCH & DISPLAY DOCTOR CARDS ===
+window.addEventListener("DOMContentLoaded", () => {
+  loadDoctorCards();
+});
+
+// === FUNCTION: loadDoctorCards ===
+// Purpose: Load all doctors and render them in the dashboard
+async function loadDoctorCards() {
+  try {
+    const doctors = await getDoctors();
+    renderDoctorCards(doctors);
+  } catch (error) {
+    console.error("Failed to load doctors:", error);
+  }
+}
+
+// === EVENT LISTENERS FOR FILTERS ===
+searchInput?.addEventListener("input", filterDoctorsOnChange);
+timeFilter?.addEventListener("change", filterDoctorsOnChange);
+specialtyFilter?.addEventListener("change", filterDoctorsOnChange);
+
+// === FUNCTION: filterDoctorsOnChange ===
+// Purpose: Handle input changes and filter doctors accordingly
+async function filterDoctorsOnChange() {
+  const name = searchInput?.value || null;
+  const time = timeFilter?.value || null;
+  const specialty = specialtyFilter?.value || null;
+
+  try {
+    const result = await filterDoctors(name, time, specialty);
+
+    if (result.doctors && result.doctors.length > 0) {
+      renderDoctorCards(result.doctors);
+    } else {
+      contentDiv.innerHTML = `<p class="no-record">No doctors found with the given filters.</p>`;
+    }
+  } catch (error) {
+    console.error("Filter error:", error);
+    alert("Failed to filter doctors. Please try again.");
+  }
+}
+
+// === FUNCTION: renderDoctorCards ===
+// Purpose: Render doctor card elements to the content area
+function renderDoctorCards(doctors) {
+  contentDiv.innerHTML = ""; // Clear old content
+  doctors.forEach((doctor) => {
+    const card = createDoctorCard(doctor);
+    contentDiv.appendChild(card);
+  });
+}
+
+// === FUNCTION: adminAddDoctor ===
+// Purpose: Handle form submission to add a new doctor
+export async function adminAddDoctor(event) {
+  event.preventDefault();
+
+  // Get form input values
+  const name = document.getElementById("doctorName").value;
+  const email = document.getElementById("doctorEmail").value;
+  const phone = document.getElementById("doctorPhone").value;
+  const password = document.getElementById("doctorPassword").value;
+  const specialty = document.getElementById("doctorSpecialty").value;
+  const timeSlots = document.getElementById("doctorTimes").value.split(",").map(s => s.trim());
+
+  // Get token
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("You must be logged in as admin to perform this action.");
+    return;
+  }
+
+  // Build doctor object
+  const newDoctor = { name, email, phone, password, specialty, availableTimes: timeSlots };
+
+  try {
+    const response = await saveDoctor(newDoctor, token);
+
+    if (response.success) {
+      alert("Doctor added successfully.");
+      closeModal("addDoctor");
+      loadDoctorCards(); // Refresh list
+    } else {
+      alert(`Failed to add doctor: ${response.message}`);
+    }
+  } catch (error) {
+    console.error("Add doctor failed:", error);
+    alert("Something went wrong while adding the doctor.");
+  }
+}
