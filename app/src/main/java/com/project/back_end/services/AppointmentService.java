@@ -1,5 +1,6 @@
 package com.project.back_end.services;
 
+import com.project.back_end.DTO.AppointmentDTO;
 import com.project.back_end.models.Appointment;
 import com.project.back_end.models.Doctor;
 import com.project.back_end.models.Patient;
@@ -15,6 +16,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @Service
 public class AppointmentService {
@@ -56,7 +59,7 @@ public class AppointmentService {
 
         Optional<Appointment> optionalAppointment = appointmentRepository.findById(appointment.getId());
         if (optionalAppointment.isEmpty()) {
-            response.put("message", "Appointment not found");
+            response.put("message", "No appointment available with id: " + appointment.getId());
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
         }
 
@@ -153,14 +156,15 @@ public class AppointmentService {
             if (pname != null && !pname.trim().isEmpty()) {
                 appointments = appointmentRepository
                         .findByDoctorIdAndPatient_NameContainingIgnoreCaseAndAppointmentTimeBetween(
-                                doctorId, pname.trim(), startOfDay, endOfDay
+                                doctorId, pname, startOfDay, endOfDay
                         );
             } else {
                 appointments = appointmentRepository
                         .findByDoctorIdAndAppointmentTimeBetween(doctorId, startOfDay, endOfDay);
             }
-
-            response.put("appointments", appointments);
+            List<AppointmentDTO> appointmentsDto = appointments.stream()
+                .map(app -> new AppointmentDTO(app)).collect(Collectors.toList());
+            response.put("appointments", appointmentsDto);
             return response;
 
         } catch (Exception e) {
@@ -171,7 +175,7 @@ public class AppointmentService {
 
     // 5. Change Status
     @Transactional
-    public void changeStatus(Long appointmentId, int status) {
-        appointmentRepository.updateStatus(status, appointmentId);
+    public void changeStatus(Long appointmentId) {
+        appointmentRepository.updateStatus(1, appointmentId);
     }
 }

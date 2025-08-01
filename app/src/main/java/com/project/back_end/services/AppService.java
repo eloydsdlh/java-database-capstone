@@ -35,14 +35,10 @@ public class AppService {
         this.patientService = patientService;
     }
 
-    /**
-     * Valida si el token es válido para un usuario dado.
-     */
     public ResponseEntity<Map<String, String>> validateToken(String token, String user) {
         Map<String, String> response = new HashMap<>();
         try {
-            boolean valid = tokenService.validateToken(token, user);
-            if (!valid) {
+            if (!tokenService.validateToken(token, user)) {
                 response.put("message", "Invalid or expired token");
                 return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
             }
@@ -55,9 +51,6 @@ public class AppService {
         }
     }
 
-    /**
-     * Valida las credenciales de un admin y genera token si son correctas.
-     */
     public ResponseEntity<Map<String, String>> validateAdmin(Admin receivedAdmin) {
         Map<String, String> response = new HashMap<>();
         try {
@@ -82,9 +75,6 @@ public class AppService {
         }
     }
 
-    /**
-     * Filtra doctores según nombre, especialidad y horario.
-     */
     public Map<String, Object> filterDoctor(String name, String specialty, String time) {
         if ((name == null || name.isEmpty()) &&
             (specialty == null || specialty.isEmpty()) &&
@@ -97,11 +87,6 @@ public class AppService {
         return doctorService.filterDoctorsByNameSpecilityandTime(name, specialty, time);
     }
 
-
-    /**
-     * Valida que el horario de la cita sea válido para el doctor.
-     * Retorna 1 si válido, 0 si no válido, -1 si doctor no existe.
-     */
     public int validateAppointment(Appointment appointment) {
         Long doctorId = appointment.getDoctor().getId();
         LocalDate date = appointment.getAppointmentTime().toLocalDate();
@@ -121,11 +106,6 @@ public class AppService {
         }
     }
 
-
-    /**
-     * Valida si el paciente existe por email o teléfono.
-     * Retorna true si no existe, false si ya existe.
-     */
     public boolean validatePatient(Patient patient) {
         try {
             Patient existing = patientRepository.findByEmailOrPhone(patient.getEmail(), patient.getPhone());

@@ -14,7 +14,7 @@ public class AppointmentDTO {
 
     private String doctorName;
 
-    private Long patiendId;
+    private Long patientId;
 
     private String patientName;
 
@@ -22,7 +22,7 @@ public class AppointmentDTO {
 
     private String patientPhone;
 
-    private String patientAdress;
+    private String patientAddress;
 
     private LocalDateTime appointmentTime;
 
@@ -34,15 +34,35 @@ public class AppointmentDTO {
 
     private LocalDateTime endTime;
 
+    public AppointmentDTO(Long id, Long doctorId,String doctorName, Long patientId, String patientName,
+                          String patientEmail, String patientPhone, String patientAddress,
+                          LocalDateTime appointmentTime, int status) {
+        this.id = id;
+        this.doctorId = doctorId;
+        this.doctorName=doctorName;
+        this.patientId = patientId;
+        this.patientName = patientName;
+        this.patientEmail = patientEmail;
+        this.patientPhone = patientPhone;
+        this.patientAddress = patientAddress;
+        this.appointmentTime = appointmentTime;
+        this.status = status;
+        
+        // Calculate custom fields
+        this.appointmentDate = appointmentTime.toLocalDate();
+        this.appointmentTimeOnly = appointmentTime.toLocalTime();
+        this.endTime = appointmentTime.plusHours(1);
+    }
+
     public AppointmentDTO(Appointment app) {
         this.id = app.getId();
         this.doctorId = app.getDoctor().getId();
         this.doctorName = app.getDoctor().getName();
-        this.patiendId = app.getPatient().getId();
+        this.patientId = app.getPatient().getId();
         this.patientName = app.getPatient().getName();
         this.patientEmail = app.getPatient().getEmail();
         this.patientPhone = app.getPatient().getPhone();
-        this.patientAdress = app.getPatient().getAddress();
+        this.patientAddress = app.getPatient().getAddress();
         this.appointmentTime = app.getAppointmentTime();
         this.status = app.getStatus();
         this.appointmentDate = appointmentTime.toLocalDate();
@@ -65,7 +85,7 @@ public class AppointmentDTO {
     }
 
     public Long getPatiendId() {
-        return patiendId;
+        return patientId;
     }
 
     public String getPatientName() {
@@ -81,7 +101,7 @@ public class AppointmentDTO {
     }
 
     public String getPatientAdress() {
-        return patientAdress;
+        return patientAddress;
     }
 
     public LocalDateTime getAppointmentTime() {

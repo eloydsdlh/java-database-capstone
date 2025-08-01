@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -27,38 +28,27 @@ public class PrescriptionController {
     @PostMapping("/{token}")
     public ResponseEntity<Map<String, String>> savePrescription(
             @RequestBody Prescription prescription,
-            @PathVariable String token) {
-
-        ResponseEntity<Map<String, String>> validationResponse = service.validateToken(token, "doctor");
-        if (validationResponse.getStatusCode() != HttpStatus.OK) {
-            return validationResponse;
+            @PathVariable String token)
+    {
+        ResponseEntity<Map<String, String>> tempMap = service.validateToken(token, "doctor");
+        if (!tempMap.getBody().isEmpty()) {
+            return tempMap;
         }
-
-        try {
-            appointmentService.changeStatus(prescription.getAppointmentId(), 1);
-
-            prescriptionService.savePrescription(prescription);
-
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("message", "Prescription saved successfully"));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Internal server error while saving prescription"));
-        }
+        appointmentService.changeStatus(prescription.getAppointmentId());
+        return prescriptionService.savePrescription(prescription);
     }
 
     @GetMapping("/{appointmentId}/{token}")
     public ResponseEntity<?> getPrescription(
             @PathVariable Long appointmentId,
-            @PathVariable String token) {
-
-        ResponseEntity<Map<String, String>> validationResponse = service.validateToken(token, "doctor");
-        if (validationResponse.getStatusCode() != HttpStatus.OK) {
-            return validationResponse;
+            @PathVariable String token)
+    {
+        Map<String, Object> map = new HashMap<>();
+        ResponseEntity<Map<String,String>> tempMap= service.validateToken(token, "doctor");
+        if (!tempMap.getBody().isEmpty()) {
+            map.putAll(tempMap.getBody());
+            return new ResponseEntity<>(map, tempMap.getStatusCode());
         }
-
-        // Llamamos al método del service que devuelve ResponseEntity<Map<String, Object>>
         return prescriptionService.getPrescription(appointmentId);
     }
 

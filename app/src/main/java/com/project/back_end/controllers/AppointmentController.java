@@ -2,6 +2,9 @@ package com.project.back_end.controllers;
 
 import com.project.back_end.models.Appointment;
 import com.project.back_end.services.AppointmentService;
+
+import jakarta.validation.Valid;
+
 import com.project.back_end.services.AppService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -25,69 +29,76 @@ public class AppointmentController {
 
     // 1. Get Appointments
     @GetMapping("/{date}/{patientName}/{token}")
-    public ResponseEntity<?> getAppointments(
+    public ResponseEntity<Map<String, Object>> getAppointments(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PathVariable String patientName,
-            @PathVariable String token) {
-
-        var validation = service.validateToken(token, "doctor");
-        if (!validation.getStatusCode().is2xxSuccessful()) {
-            return validation;
+            @PathVariable String token) 
+    {
+        Map<String, Object> map = new HashMap<>();
+        ResponseEntity<Map<String,String>> tempMap= service.validateToken(token, "doctor");
+        if (!tempMap.getBody().isEmpty()) {
+            map.putAll(tempMap.getBody());
+            return new ResponseEntity<>(map, tempMap.getStatusCode());
         }
-
-        Map<String, Object> appointments = appointmentService.getAppointment(patientName, date, token);
-        return new ResponseEntity<>(appointments, HttpStatus.OK);
+        map=appointmentService.getAppointment(patientName, date, token);
+        return ResponseEntity.status(HttpStatus.OK).body(map);
     }
-
     // 2. Book Appointment
     @PostMapping("/{token}")
     public ResponseEntity<Map<String, String>> bookAppointment(
-            @RequestBody Appointment appointment,
-            @PathVariable String token) {
-
-        var validation = service.validateToken(token, "patient");
-        if (!validation.getStatusCode().is2xxSuccessful()) {
-            return validation;
+            @RequestBody @Valid Appointment appointment,
+            @PathVariable String token)
+    {
+        ResponseEntity<Map<String, String>> tempMap = service.validateToken(token, "patient");
+        if (!tempMap.getBody().isEmpty()) {
+            return tempMap;
         }
 
-        int validationMessage = service.validateAppointment(appointment);
-        if (validationMessage != 1) {
-            return new ResponseEntity<>(Map.of("message", "Appointment not available"), HttpStatus.BAD_REQUEST);
+        Map<String, String> response = new HashMap<>();
+        int out = service.validateAppointment(appointment);
+        if (out == 1) {
+            int res = appointmentService.bookAppointment(appointment);
+            if (res == 1) {
+                response.put("message", "Appointment Booked Successfully");
+                return ResponseEntity.status(HttpStatus.CREATED).body(response); // 201 Created
+
+            }
+            response.put("message", "Internal Server Error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response); // 409 Conflict
+
+        } else if (out == -1) {
+            response.put("message", "Invalid doctor id");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
 
-        int result = appointmentService.bookAppointment(appointment);
-        if (result == 1) {
-            return new ResponseEntity<>(Map.of("message", "Appointment booked successfully"), HttpStatus.CREATED);
-        } else {
-            return new ResponseEntity<>(Map.of("message", "Failed to book appointment"), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        response.put("message", "Appointment already booked for given time or Doctor not available");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+
     }
 
     // 3. Update Appointment
     @PutMapping("/{token}")
     public ResponseEntity<Map<String, String>> updateAppointment(
-            @RequestBody Appointment appointment,
-            @PathVariable String token) {
-
-        var validation = service.validateToken(token, "patient");
-        if (!validation.getStatusCode().is2xxSuccessful()) {
-            return validation;
+            @PathVariable String token,
+            @RequestBody @Valid Appointment appointment)
+    {
+        ResponseEntity<Map<String, String>> tempMap = service.validateToken(token, "patient");
+        if (!tempMap.getBody().isEmpty()) {
+            return tempMap;
         }
-
-        return appointmentService.updateAppointment(appointment);
+        return appointmentService.updateAppointment(appointment);   
     }
 
     // 4. Cancel Appointment
     @DeleteMapping("/{id}/{token}")
-    public ResponseEntity<Map<String, String>> cancelAppointment(
-            @PathVariable long id,
-            @PathVariable String token) {
-
-        var validation = service.validateToken(token, "patient");
-        if (!validation.getStatusCode().is2xxSuccessful()) {
-            return validation;
+    public ResponseEntity<Map<String, String>>  cancelAppointment(
+            @PathVariable Long id,
+            @PathVariable String token)
+    {
+        ResponseEntity<Map<String, String>> tempMap = service.validateToken(token, "patient");
+        if (!tempMap.getBody().isEmpty()) {
+            return tempMap;
         }
-
-        return appointmentService.cancelAppointment(id, token);
+        return appointmentService.cancelAppointment(id,token);
     }
 }
